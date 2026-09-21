@@ -17,18 +17,36 @@ module ActiveAdminFiltersDefaults
     # The filter values the collection is searched with. Override to change what the index
     # filters on without reaching into `params`.
     #
-    # When the request carries no filters of its own, the values declared with
-    # `filter ..., default:` are used. `commit` marks a submission of the filter form:
-    # submitting it with every field blank sends no `q` at all, because the form disables
-    # empty fields on submit, so `commit` is what tells "show me everything" apart from a
-    # first visit. Clearing the filters drops `commit` along with `q`, so Clear Filters
-    # returns the page to its declared defaults.
+    # Whatever the request asked for wins over a default, so that an override of
+    # #filter_defaults_apply? which lets defaults through on a partly filtered request keeps
+    # the values that were actually asked for.
     #
     # @return [Hash, ActionController::Parameters] values passed to Ransack
     def filter_params
-      return params[:q] || {} if params[:q].present? || params[:commit].present?
+      return params[:q] || {} unless filter_defaults_apply?
 
-      filter_default_values.presence || params[:q] || {}
+      defaults = filter_default_values
+      return params[:q] || {} if defaults.blank?
+
+      requested = params[:q]
+      requested = requested.to_unsafe_h if requested.respond_to?(:to_unsafe_h)
+      defaults.merge(requested || {})
+    end
+
+    # Whether the request is one the declared defaults should apply to. Override to widen it -
+    # a resource that always carries its customer in `q`, say, still wants its defaults on the
+    # first visit:
+    #
+    #   def filter_defaults_apply?
+    #     super || params[:q].keys == %w[customer_id_eq]
+    #   end
+    #
+    # `commit` marks a submission of the filters form: submitting it with every field blank
+    # sends no `q` at all, because the form disables empty fields on submit, so `commit` is
+    # what tells "show me everything" apart from a first visit. Clearing the filters drops
+    # `commit` along with `q`, so Clear Filters returns the page to its declared defaults.
+    def filter_defaults_apply?
+      params[:q].blank? && params[:commit].blank?
     end
 
     # The filters of this resource that `:if` and `:unless` allow, which is both the set the

@@ -108,6 +108,36 @@ RSpec.describe ActiveAdminFiltersDefaults::DataAccess do
     end
   end
 
+  describe "#filter_defaults_apply?" do
+    let(:filters) { { starred_eq: { default: true } } }
+
+    context "when an override lets defaults through on a partly filtered request" do
+      let(:params) { { q: { "customer_id_eq" => "7" } } }
+
+      before do
+        def controller.filter_defaults_apply?
+          super || params[:q].keys == %w[customer_id_eq]
+        end
+      end
+
+      it "keeps what the request asked for and adds the defaults to it" do
+        expect(searched_with).to eq("customer_id_eq" => "7", "starred_eq" => true)
+      end
+    end
+
+    context "when the request carries a value for a filter that also declares a default" do
+      let(:params) { { q: { "starred_eq" => false } } }
+
+      before do
+        def controller.filter_defaults_apply? = true
+      end
+
+      it "leaves the request value alone rather than overwriting it" do
+        expect(searched_with).to eq("starred_eq" => false)
+      end
+    end
+  end
+
   describe "a resource without any default" do
     let(:filters) { { title: {} } }
 

@@ -32,6 +32,10 @@ gsub_file "config/environment.rb",
           "$LOAD_PATH.unshift('#{gem_lib}')\n" \
           "require \"active_admin_filters_defaults\"\n"
 
+file "config/initializers/filters_defaults_notice.rb", <<~RUBY
+  require "active_admin_filters_defaults/notice"
+RUBY
+
 generate :"active_admin:install --skip-users"
 generate :"formtastic:install"
 
@@ -102,6 +106,11 @@ file "app/admin/posts.rb", <<~RUBY
 
   ActiveAdmin.register Post, as: "PlainPost" do
     filter :title
+  end
+
+  ActiveAdmin.register Post, as: "NoticePost" do
+    default_filters_notice "Showing the kept ones by default"
+    filter :title, default: { cont: "keep" }
   end
 
   ActiveAdmin.register Post, as: "AllHiddenPost" do

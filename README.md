@@ -63,6 +63,40 @@ Defaults apply only while the request carries no filters of its own.
 * **Clear Filters** drops `commit` along with `q`, so it returns the page to its defaults rather
   than to an empty filter set.
 
+## Widening when the defaults apply
+
+By default they apply to a request that carries no filters of its own. A resource that always
+carries something in `q` — a customer id pinned by a nested route, say — can widen that:
+
+```ruby
+controller do
+  def filter_defaults_apply?
+    super || params[:q].keys == %w[customer_id_eq]
+  end
+end
+```
+
+Whatever the request asked for wins over a default, so the pinned value survives.
+
+## Telling the admin why
+
+An index that quietly shows a slice of the table owes the admin a word about it. That part is
+optional and is not installed on its own, since Active Admin has no notion of a flash about
+filters:
+
+```ruby
+# config/initializers/active_admin.rb
+require "active_admin_filters_defaults/notice"
+
+ActiveAdmin.register Export do
+  default_filters_notice "Records for the last month are displayed by default"
+  filter :created_at, as: :date_range, default: { gteq: -> { 1.month.ago } }
+end
+```
+
+The message is flashed only when the defaults actually took effect. Pass `flash_key:` to use
+something other than `:notice`.
+
 ## How it works
 
 Four `prepend`s, no source patching:
