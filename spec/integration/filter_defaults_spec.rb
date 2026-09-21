@@ -34,6 +34,13 @@ RSpec.describe "Filter default values", type: :feature do
     end
   end
 
+  describe "a value that cannot be placed" do
+    it "says so instead of guessing" do
+      expect { visit "/admin/ambiguous_posts" }
+        .to raise_error(ArgumentError, /filter :published_date declares a `default:`.*single value cannot say which to fill/m)
+    end
+  end
+
   describe "the form the admin sees" do
     it "is seeded with the default, so it can be read and edited like any other filter" do
       visit "/admin/posts"

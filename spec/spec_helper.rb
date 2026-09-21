@@ -28,12 +28,25 @@ class FakeController
 
   attr_reader :params, :active_admin_config
 
-  def initialize(params: {}, filters: {})
+  # Deriving a search key means building a Formtastic input, which needs Rails. What the input
+  # would answer is supplied here instead, so these examples cover the step above derivation -
+  # splitting a value across the keys - while spec/integration covers the derivation itself.
+  def initialize(params: {}, filters: {}, search_keys: {})
     @params = ActiveSupport::HashWithIndifferentAccess.new(params)
     @active_admin_config = Config.new(filters)
+    @search_keys = search_keys
+  end
+
+  # Prepended below rather than defined here: DataAccess is itself prepended, so a method on
+  # the class would sit behind it in the lookup chain and never be reached.
+  module SearchKeys
+    def filter_search_keys(attribute, _options)
+      @search_keys.fetch(attribute) { [attribute.to_s] }
+    end
   end
 
   prepend ActiveAdminFiltersDefaults::DataAccess
+  prepend SearchKeys
 end
 
 RSpec.configure do |config|

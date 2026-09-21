@@ -66,20 +66,28 @@ module ActiveAdminFiltersDefaults
       @filter_default_values ||= visible_filters.each_with_object({}) do |(attribute, options), result|
         next unless options.key?(:default)
 
-        add_filter_default_value(result, attribute, options[:default])
+        add_filter_default_value(result, attribute, options)
       end
     end
 
-    # A scalar default applies to the filter name as it stands, which is what filters whose
-    # name already carries a predicate need: `filter :status_eq, default: "active"`.
+    # A default is a value, and where that value goes is the input's business: a `:select`
+    # submits `_eq`, a `:check_boxes` submits `_in` under the association's primary key, a
+    # `:string` submits whichever predicate heads its dropdown, which the resource or the
+    # namespace may have reordered. So the input is built and asked, rather than the author
+    # being made to spell a Ransack key out:
     #
-    # A Hash is keyed by predicate, which is what an input rendering more than one field
-    # needs, since the filter name alone does not identify a search key:
-    # `filter :created_at, as: :date_range, default: { gteq: -> { 1.week.ago.to_date } }`.
+    #   filter :status, as: :select,      default: "active"
+    #   filter :author, as: :check_boxes, default: [1, 2]
+    #   filter :created_at, as: :date_range, default: 1.week.ago..Time.current
+    #   filter :created_at, as: :date_range, default: 1.week.ago..          # lower bound only
+    #
+    # A Hash still says the predicates outright, for when the input's own is not the one you
+    # want (`default: { eq: "acme" }` on a string filter that would otherwise search `_cont`).
     #
     # Only a Proc is called - unlike `:if` and `:unless`, a Symbol here is a value, not a
     # method to send.
-    def add_filter_default_value(result, attribute, default)
+    def add_filter_default_value(result, attribute, options)
+      default = options[:default]
       default = instance_exec(&default) if default.is_a?(Proc)
       return if default.nil?
 
@@ -89,8 +97,64 @@ module ActiveAdminFiltersDefaults
           result["#{attribute}_#{predicate}"] = value unless value.nil?
         end
       else
-        result[attribute.to_s] = default
+        assign_derived_filter_default(result, attribute, options, default)
       end
+    end
+
+    private
+
+    # A Range fills a two-ended input, one bound per end, and an endless or beginless one fills
+    # only the end it has. Anything else is a single value for a single-ended input.
+    def assign_derived_filter_default(result, attribute, options, default)
+      names = filter_search_keys(attribute, options)
+
+      if default.is_a?(Range)
+        raise_filter_default_error(attribute, "a Range needs an input with two ends, and this one submits #{names.join(' and ')}") unless names.size == 2
+
+        result[names.first] = default.begin unless default.begin.nil?
+        result[names.last] = default.end unless default.end.nil?
+      else
+        raise_filter_default_error(attribute, "this input submits #{names.join(' and ')}, so a single value cannot say which to fill - give a Range, or name the predicates with a Hash") unless names.size == 1
+
+        result[names.first] = default
+      end
+    end
+
+    # Asks the input itself, against an empty search: `current_filter` would otherwise answer
+    # with whatever predicate the current request happens to carry, and a default is about the
+    # request that carries none.
+    def filter_search_keys(attribute, options)
+      input = build_filter_input(attribute, options)
+
+      names =
+        if input.respond_to?(:gt_input_name)
+          [input.gt_input_name, input.lt_input_name]
+        elsif input.respond_to?(:current_filter) && !input.seems_searchable?
+          # `:string` and `:numeric` let the admin pick the predicate from a dropdown, and the
+          # head of that list is what an untouched form submits. Unless the filter name already
+          # carries a predicate, in which case there is no dropdown - and asking anyway raises,
+          # since `current_filter` would go looking for `title_eq_cont`.
+          [input.current_filter]
+        else
+          [input.input_name]
+        end
+
+      names.map { |name| name.to_s[/\Aq\[([^\]]+)\]/, 1] || name.to_s }
+    rescue StandardError => e
+      raise_filter_default_error(attribute, "could not work out which search key it submits (#{e.class}: #{e.message}) - name the predicate with a Hash instead")
+    end
+
+    def build_filter_input(attribute, options)
+      search = active_admin_config.resource_class.ransack({})
+      template = view_context
+      builder = ::ActiveAdmin::Filters::FormBuilder.new(:q, search, template, {})
+      as = options[:as] || builder.send(:default_input_type, attribute)
+      builder.send(:namespaced_input_class, as)
+             .new(builder, template, search, :q, attribute, options.except(:default, :if, :unless))
+    end
+
+    def raise_filter_default_error(attribute, message)
+      raise ArgumentError, "filter :#{attribute} declares a `default:` but #{message}"
     end
   end
 end

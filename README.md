@@ -24,21 +24,21 @@ Pre-1.0 and not on RubyGems yet: the option name and the shape of its value may 
 
 ## Usage
 
-**A scalar** applies to the filter name as it stands, which is what a name that already carries
-its predicate needs:
+A default is a **value**. Which Ransack key it lands under is the input's business, and the
+input is asked - so a `:select` gets `_eq`, a `:check_boxes` gets `_in` under the association's
+primary key, and a `:string` gets whichever predicate heads its dropdown, including when the
+resource or the namespace has reordered that list:
 
 ```ruby
-filter :state_eq, as: :select, collection: %w[active archived], default: "active"
+filter :status,     as: :select,      default: "active"
+filter :author,     as: :check_boxes, default: [1, 2]
+filter :created_at, as: :date_range,  default: 1.week.ago..Time.current
+filter :created_at, as: :date_range,  default: 1.week.ago..              # lower bound only
+filter :title,                        default: "acme"
 ```
 
-**A Hash** is keyed by predicate, for inputs that render more than one field. A `:date_range`
-renders a `gteq` and an `lteq` field, and a `:check_boxes` submits as `q[author_id_in][]`, so the
-filter name on its own does not identify a search key:
-
-```ruby
-filter :created_at, as: :date_range,  default: { gteq: -> { 1.week.ago.to_date } }
-filter :author,     as: :check_boxes, default: { id_in: [1, 2] }
-```
+**A Range** fills a two-ended input, one bound per end; leave an end off and that end is left to
+the admin. Handing a single value to a two-ended input raises, rather than picking an end for you.
 
 **A Proc** is evaluated against the controller on every request, and a `nil` result applies no
 filter, which is how a default is made conditional or read off the signed-in admin:
@@ -46,6 +46,13 @@ filter, which is how a default is made conditional or read off the signed-in adm
 ```ruby
 filter :author_id_eq, default: -> { current_admin_user.id unless current_admin_user.admin? }
 filter :queue_eq,     default: -> { current_admin_user.default_queue }
+```
+
+**A Hash** names the predicates outright, for when the input's own is not the one you want:
+
+```ruby
+filter :title, default: { eq: "acme" }                 # rather than the _cont it would submit
+filter :created_at, as: :date_range, default: { gteq: -> { 1.week.ago } }
 ```
 
 A filter hidden by `:if` or `:unless` imposes no default either — it would filter the collection
