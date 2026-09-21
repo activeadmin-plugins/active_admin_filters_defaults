@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gemspec
+
+default_rails_version = "7.2.0"
+default_activeadmin_version = "3.5.0"
+
+gem "rails", "~> #{ENV['RAILS'] || default_rails_version}"
+gem "activeadmin", "~> #{ENV['AA'] || default_activeadmin_version}"
+gem "sprockets-rails"
+gem "sass-rails"
+
+group :test do
+  gem "capybara"
+  gem "cuprite"
+  gem "database_cleaner-active_record"
+  gem "rspec-rails"
+  gem "sqlite3", "~> 2.0"
+  gem "webrick", require: false
+end

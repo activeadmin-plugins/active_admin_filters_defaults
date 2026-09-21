@@ -1,0 +1,6 @@
+*.gem
+/.bundle/
+/pkg/
+/spec/rails/
+/tmp/
+Gemfile.lock

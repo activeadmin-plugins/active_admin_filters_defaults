@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby }} / Rails ${{ matrix.rails }} / AA ${{ matrix.activeadmin }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Rails 7.1 is out of even severe-security support, so the floor is 7.2.
+        ruby: ['3.2', '3.4']
+        rails: ['7.2.0', '8.0.0']
+        activeadmin: ['3.5.0']
+    env:
+      RAILS: ${{ matrix.rails }}
+      AA: ${{ matrix.activeadmin }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      # spec/rails_helper.rb would do this on its own, but running it as a step of its own keeps
+      # a failure in app generation from being reported as a failure in the first example.
+      - name: Generate the sample app
+        run: bundle exec rake setup
+
+      # The Clear Filters example drives a real browser through cuprite; ubuntu-latest ships
+      # Chrome, so there is nothing to install.
+      - name: Run tests
+        run: bundle exec rspec
