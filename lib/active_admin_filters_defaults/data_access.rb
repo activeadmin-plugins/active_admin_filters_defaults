@@ -2,7 +2,7 @@
 
 module ActiveAdminFiltersDefaults
   # Replaces ActiveAdmin::ResourceController::DataAccess#apply_filtering so that the collection
-  # is searched on #filter_params rather than on `params[:q]` read directly.
+  # is searched on #filtering_params rather than on `params[:q]` read directly.
   #
   # The Ransack call is the Active Admin 3 one, which this gem targets: Active Admin 4 passes
   # `auth_object: active_admin_authorization` there as well.
@@ -10,7 +10,7 @@ module ActiveAdminFiltersDefaults
     protected
 
     def apply_filtering(chain)
-      @search = chain.ransack(filter_params)
+      @search = chain.ransack(filtering_params)
       @search.result
     end
 
@@ -22,7 +22,7 @@ module ActiveAdminFiltersDefaults
     # the values that were actually asked for.
     #
     # @return [Hash, ActionController::Parameters] values passed to Ransack
-    def filter_params
+    def filtering_params
       return params[:q] || {} unless filter_defaults_apply?
 
       defaults = filter_default_values

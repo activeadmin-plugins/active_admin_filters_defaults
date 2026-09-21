@@ -101,7 +101,7 @@ something other than `:notice`.
 
 Four `prepend`s, no source patching:
 
-* `ActiveAdmin::ResourceController` — `apply_filtering` searches on `filter_params`, a new
+* `ActiveAdmin::ResourceController` — `apply_filtering` searches on `filtering_params`, a new
   overridable method, instead of reading `params[:q]` directly. `params` itself is never written
   to: the filter inputs read their value from the Ransack object, and the defaults are derived
   again on every request that carries no `q`, so paging, sorting and download links keep them.
