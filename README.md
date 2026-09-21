@@ -53,7 +53,22 @@ filter :author_id_eq, default: -> { current_admin_user.id unless current_admin_u
 filter :queue_eq,     default: -> { current_admin_user.default_queue }
 ```
 
-**A Hash** names the predicates outright, for when the input's own is not the one you want:
+Asking the input means you get whatever that input actually submits, which is not always the
+predicate the docs of some other app would lead you to expect. A `:string` filter submits the
+head of its dropdown, and an app that re-registers Ransack's aliases - `contains`, `equals`,
+`starts_with` - reorders that list, so `default: "acme"` may search for equality rather than a
+substring. That is correct, since it is what an untouched form submits there, but check it
+rather than assume.
+
+Deriving needs a resource Ransack can search. A resource backed by something else - an
+ActiveResource model standing in for an HTTP API, say - has no `ransack`, and the derivation
+raises rather than guessing:
+
+    filter :created_at declares a `default:` but could not work out which search key it submits
+    (NoMethodError: undefined method 'ransack' ...) - name the predicate with a Hash instead
+
+**A Hash** names the predicates outright, for that case and for when the input's own predicate
+is not the one you want:
 
 ```ruby
 filter :title, default: { eq: "acme" }                 # rather than the _cont it would submit
