@@ -32,13 +32,18 @@ resource or the namespace has reordered that list:
 ```ruby
 filter :status,     as: :select,      default: "active"
 filter :author,     as: :check_boxes, default: [1, 2]
-filter :created_at, as: :date_range,  default: 1.week.ago..Time.current
-filter :created_at, as: :date_range,  default: 1.week.ago..              # lower bound only
+filter :created_at, as: :date_range,  default: -> { 1.week.ago..Time.current }
+filter :created_at, as: :date_range,  default: -> { 1.week.ago.. }       # lower bound only
 filter :title,                        default: "acme"
 ```
 
 **A Range** fills a two-ended input, one bound per end; leave an end off and that end is left to
 the admin. Handing a single value to a two-ended input raises, rather than picking an end for you.
+
+Anything relative to now belongs in a Proc, as above. `filter` runs when the resource file is
+loaded, so `default: 1.week.ago..` would pin the window to the moment the process booted and let
+it drift for as long as that process lives - quietly, and worst on the long-running ones. A Proc
+is re-read on every request.
 
 **A Proc** is evaluated against the controller on every request, and a `nil` result applies no
 filter, which is how a default is made conditional or read off the signed-in admin:
