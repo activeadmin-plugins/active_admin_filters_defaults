@@ -145,12 +145,20 @@ module ActiveAdminFiltersDefaults
     end
 
     def build_filter_input(attribute, options)
-      search = active_admin_config.resource_class.ransack({})
-      template = view_context
-      builder = ::ActiveAdmin::Filters::FormBuilder.new(:q, search, template, {})
+      builder = filter_input_builder
       as = options[:as] || builder.send(:default_input_type, attribute)
       builder.send(:namespaced_input_class, as)
-             .new(builder, template, search, :q, attribute, options.except(:default, :if, :unless))
+             .new(builder, builder.template, builder.object, :q, attribute, options.except(:default, :if, :unless))
+    end
+
+    # One per request rather than one per filter: #view_context builds a fresh view class every
+    # time it is called, and every defaulted filter would pay for another one.
+    #
+    # The search is empty on purpose - see #filter_search_keys.
+    def filter_input_builder
+      @filter_input_builder ||= ::ActiveAdmin::Filters::FormBuilder.new(
+        :q, active_admin_config.resource_class.ransack({}), view_context, {}
+      )
     end
 
     def raise_filter_default_error(attribute, message)
