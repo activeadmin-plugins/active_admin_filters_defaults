@@ -24,21 +24,26 @@ Pre-1.0 and not on RubyGems yet: the option name and the shape of its value may 
 
 ## Usage
 
-**A scalar** applies to the filter name as it stands, which is what a name that already carries
-its predicate needs:
+A default is a **value**. Which Ransack key it lands under is the input's business, and the
+input is asked - so a `:select` gets `_eq`, a `:check_boxes` gets `_in` under the association's
+primary key, and a `:string` gets whichever predicate heads its dropdown, including when the
+resource or the namespace has reordered that list:
 
 ```ruby
-filter :state_eq, as: :select, collection: %w[active archived], default: "active"
+filter :status,     as: :select,      default: "active"
+filter :author,     as: :check_boxes, default: [1, 2]
+filter :created_at, as: :date_range,  default: -> { 1.week.ago..Time.current }
+filter :created_at, as: :date_range,  default: -> { 1.week.ago.. }       # lower bound only
+filter :title,                        default: "acme"
 ```
 
-**A Hash** is keyed by predicate, for inputs that render more than one field. A `:date_range`
-renders a `gteq` and an `lteq` field, and a `:check_boxes` submits as `q[author_id_in][]`, so the
-filter name on its own does not identify a search key:
+**A Range** fills a two-ended input, one bound per end; leave an end off and that end is left to
+the admin. Handing a single value to a two-ended input raises, rather than picking an end for you.
 
-```ruby
-filter :created_at, as: :date_range,  default: { gteq: -> { 1.week.ago.to_date } }
-filter :author,     as: :check_boxes, default: { id_in: [1, 2] }
-```
+Anything relative to now belongs in a Proc, as above. `filter` runs when the resource file is
+loaded, so `default: 1.week.ago..` would pin the window to the moment the process booted and let
+it drift for as long as that process lives - quietly, and worst on the long-running ones. A Proc
+is re-read on every request.
 
 **A Proc** is evaluated against the controller on every request, and a `nil` result applies no
 filter, which is how a default is made conditional or read off the signed-in admin:
@@ -46,6 +51,28 @@ filter, which is how a default is made conditional or read off the signed-in adm
 ```ruby
 filter :author_id_eq, default: -> { current_admin_user.id unless current_admin_user.admin? }
 filter :queue_eq,     default: -> { current_admin_user.default_queue }
+```
+
+Asking the input means you get whatever that input actually submits, which is not always the
+predicate the docs of some other app would lead you to expect. A `:string` filter submits the
+head of its dropdown, and an app that re-registers Ransack's aliases - `contains`, `equals`,
+`starts_with` - reorders that list, so `default: "acme"` may search for equality rather than a
+substring. That is correct, since it is what an untouched form submits there, but check it
+rather than assume.
+
+Deriving needs a resource Ransack can search. A resource backed by something else - an
+ActiveResource model standing in for an HTTP API, say - has no `ransack`, and the derivation
+raises rather than guessing:
+
+    filter :created_at declares a `default:` but could not work out which search key it submits
+    (NoMethodError: undefined method 'ransack' ...) - name the predicate with a Hash instead
+
+**A Hash** names the predicates outright, for that case and for when the input's own predicate
+is not the one you want:
+
+```ruby
+filter :title, default: { eq: "acme" }                 # rather than the _cont it would submit
+filter :created_at, as: :date_range, default: { gteq: -> { 1.week.ago } }
 ```
 
 A filter hidden by `:if` or `:unless` imposes no default either — it would filter the collection

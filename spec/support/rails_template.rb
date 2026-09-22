@@ -61,7 +61,7 @@ RUBY
 # `:check_boxes` submits `_in[]`.
 file "app/admin/posts.rb", <<~RUBY
   ActiveAdmin.register Post do
-    filter :title, default: { cont: "keep" }
+    filter :title, default: "keep"
 
     csv do
       column :title
@@ -77,19 +77,19 @@ file "app/admin/posts.rb", <<~RUBY
   end
 
   ActiveAdmin.register Post, as: "DatePost" do
-    filter :published_date, as: :date_range, default: { gteq: "2026-01-01" }
+    filter :published_date, as: :date_range, default: Date.new(2026, 1, 1)..
   end
 
   ActiveAdmin.register Post, as: "SelectPost" do
-    filter :status, as: :select, collection: %w[draft published], default: { eq: "published" }
+    filter :status, as: :select, collection: %w[draft published], default: "published"
   end
 
   ActiveAdmin.register Post, as: "CheckBoxesPost" do
-    filter :status, as: :check_boxes, collection: %w[draft published], default: { in: ["published"] }
+    filter :status, as: :check_boxes, collection: %w[draft published], default: ["published"]
   end
 
   ActiveAdmin.register Post, as: "BooleanPost" do
-    filter :starred, default: { eq: true }
+    filter :starred, default: true
   end
 
   ActiveAdmin.register Post, as: "AdminPreferencePost" do
@@ -98,10 +98,10 @@ file "app/admin/posts.rb", <<~RUBY
   end
 
   ActiveAdmin.register Post, as: "ConditionalPost" do
-    filter :title, default: { cont: "keep" }, if: -> { false }
-    filter :body, default: { cont: "keep" }, unless: -> { true }
+    filter :title, default: "keep", if: -> { false }
+    filter :body, default: "keep", unless: -> { true }
     filter :status, as: :select, collection: %w[draft published],
-                    default: { eq: "published" }, if: -> { true }
+                    default: "published", if: -> { true }
   end
 
   ActiveAdmin.register Post, as: "PlainPost" do
@@ -110,7 +110,16 @@ file "app/admin/posts.rb", <<~RUBY
 
   ActiveAdmin.register Post, as: "NoticePost" do
     default_filters_notice "Showing the kept ones by default"
-    filter :title, default: { cont: "keep" }
+    filter :title, default: "keep"
+  end
+
+  ActiveAdmin.register Post, as: "AmbiguousPost" do
+    filter :published_date, as: :date_range, default: Date.new(2026, 1, 1)
+  end
+
+  ActiveAdmin.register Post, as: "ProcInputHtmlPost" do
+    filter :status, as: :select, collection: %w[draft published],
+                    input_html: proc { { class: "select2" } }, default: "published"
   end
 
   ActiveAdmin.register Post, as: "AllHiddenPost" do

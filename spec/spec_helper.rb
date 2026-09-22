@@ -6,6 +6,7 @@ require "active_support/hash_with_indifferent_access"
 # Pure Ruby, no Active Admin boot required - `visible_filters` resolves `:if` / `:unless` with it.
 require "active_admin/view_helpers/method_or_proc_helper"
 require "active_admin_filters_defaults/data_access"
+require "active_admin_filters_defaults/filter_defaults"
 
 # `DataAccess` only needs `params`, `active_admin_config` and something that answers `ransack`.
 # That lets the unit suite run without booting Active Admin or Rails; the integration suite in
@@ -28,12 +29,22 @@ class FakeController
 
   attr_reader :params, :active_admin_config
 
-  def initialize(params: {}, filters: {})
+  # Deriving a search key means building a Formtastic input, which needs Rails. What the input
+  # would answer is supplied here instead, so these examples cover the step above derivation -
+  # splitting a value across the keys - while spec/integration covers the derivation itself.
+  def initialize(params: {}, filters: {}, search_keys: {})
     @params = ActiveSupport::HashWithIndifferentAccess.new(params)
     @active_admin_config = Config.new(filters)
+    @search_keys = search_keys
+  end
+
+  # Plain override: FilterDefaults is included, so the class wins.
+  def filter_search_keys(attribute, _options)
+    @search_keys.fetch(attribute) { [attribute.to_s] }
   end
 
   prepend ActiveAdminFiltersDefaults::DataAccess
+  include ActiveAdminFiltersDefaults::FilterDefaults
 end
 
 RSpec.configure do |config|

@@ -23,7 +23,7 @@ module ActiveAdminFiltersDefaults
   # method, so that this gem carries no copy of a method body that belongs to Active Admin.
   module ViewHelper
     def active_admin_filters_form_for(search, filters, options = {})
-      super(search, filters.transform_values { |opts| opts.except(:if, :unless, :default) }, options)
+      super(search, filters.transform_values { |opts| opts.except(*FilterDefaults::NOT_FOR_INPUT) }, options)
     end
   end
 

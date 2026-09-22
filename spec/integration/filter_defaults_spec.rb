@@ -34,11 +34,76 @@ RSpec.describe "Filter default values", type: :feature do
     end
   end
 
-  describe "the form the admin sees" do
-    it "is seeded with the default, so it can be read and edited like any other filter" do
+  # `Proc#[]` is `call`, so a Proc left in `:input_html` answers Formtastic's `[:multiple]`
+  # check with a truthy Hash and a select derives `_in` instead of `_eq` - filtering nothing,
+  # silently. The Proc is resolved first, the way the filters form resolves it.
+  it "resolves a Proc :input_html before asking the input" do
+    visit "/admin/proc_input_html_posts"
+
+    expect(page).to have_content("keep me")
+    expect(page).to have_no_content("drop me")
+    expect(page).to have_select("q[status_eq]", selected: "published")
+  end
+
+  describe "a value that cannot be placed" do
+    it "says so instead of guessing" do
+      expect { visit "/admin/ambiguous_posts" }
+        .to raise_error(ArgumentError, /filter :published_date declares a `default:`.*single value cannot say which to fill/m)
+    end
+  end
+
+  # Filtering the collection is only half of it: the admin has to be able to see what the page
+  # decided on their behalf, and change it. Every input type is checked, because each renders
+  # its value differently and a default that filters invisibly is the thing to avoid.
+  describe "the value the admin sees in the form" do
+    it "shows it on a string filter" do
       visit "/admin/posts"
 
       expect(page).to have_field("q[title_cont]", with: "keep")
+    end
+
+    it "shows it on a string filter whose name carries the predicate" do
+      visit "/admin/scalar_posts"
+
+      expect(page).to have_field("q[title_cont]", with: "keep")
+    end
+
+    it "shows it on a select filter" do
+      visit "/admin/select_posts"
+
+      expect(page).to have_select("q[status_eq]", selected: "published")
+    end
+
+    it "shows it on a check boxes filter" do
+      visit "/admin/check_boxes_posts"
+
+      expect(page).to have_checked_field("q[status_in][]", with: "published")
+      expect(page).to have_unchecked_field("q[status_in][]", with: "draft")
+    end
+
+    it "shows it on a boolean filter" do
+      visit "/admin/boolean_posts"
+
+      expect(page).to have_select("q[starred_eq]", selected: "Yes")
+    end
+
+    it "shows it on both ends of a date range filter" do
+      visit "/admin/date_posts"
+
+      expect(page).to have_field("q[published_date_gteq]", with: "2026-01-01")
+      expect(page).to have_field("q[published_date_lteq]", with: "")
+    end
+
+    it "shows it on a numeric filter, with the predicate its Hash named selected" do
+      visit "/admin/numeric_posts"
+
+      expect(page).to have_field("q[position_gt]", with: "10")
+    end
+
+    it "shows the one read off the signed in admin" do
+      visit "/admin/admin_preference_posts"
+
+      expect(page).to have_select("q[status_eq]", selected: "published")
     end
 
     it "shows everything once the field is blanked and the form submitted" do
