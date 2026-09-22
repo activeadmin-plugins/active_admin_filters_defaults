@@ -8,6 +8,12 @@ module ActiveAdminFiltersDefaults
   # resource is meant to be able to override the seams here in its own `controller do` block.
   # The one method that does replace Active Admin's is in DataAccess.
   module FilterDefaults
+    # Read here and never handed to an input: `:default` is this gem's, and `:if` / `:unless`
+    # are Active Admin's but are resolved by #visible_filters before the form is given
+    # anything. Named once, because both the form and the derivation have to strip the same
+    # set and an option that drifts between them reaches Formtastic silently.
+    NOT_FOR_INPUT = %i[default if unless].freeze
+
     protected
 
     # The filter values the collection is searched with. Override to change what the index
@@ -153,7 +159,7 @@ module ActiveAdminFiltersDefaults
     # a way nothing reports: `Proc#[]` is `call`, so Formtastic asking `input_html[:multiple]`
     # invokes it, gets a truthy Hash back, and a `:select` derives `_in` rather than `_eq`.
     def filter_input_options(options, builder)
-      options = options.except(:default, :if, :unless)
+      options = options.except(*NOT_FOR_INPUT)
       return options unless options[:input_html].is_a?(Proc)
 
       options.merge(input_html: builder.template.instance_exec(&options[:input_html]))
