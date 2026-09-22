@@ -34,6 +34,17 @@ RSpec.describe "Filter default values", type: :feature do
     end
   end
 
+  # `Proc#[]` is `call`, so a Proc left in `:input_html` answers Formtastic's `[:multiple]`
+  # check with a truthy Hash and a select derives `_in` instead of `_eq` - filtering nothing,
+  # silently. The Proc is resolved first, the way the filters form resolves it.
+  it "resolves a Proc :input_html before asking the input" do
+    visit "/admin/proc_input_html_posts"
+
+    expect(page).to have_content("keep me")
+    expect(page).to have_no_content("drop me")
+    expect(page).to have_select("q[status_eq]", selected: "published")
+  end
+
   describe "a value that cannot be placed" do
     it "says so instead of guessing" do
       expect { visit "/admin/ambiguous_posts" }

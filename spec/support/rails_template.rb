@@ -117,6 +117,11 @@ file "app/admin/posts.rb", <<~RUBY
     filter :published_date, as: :date_range, default: Date.new(2026, 1, 1)
   end
 
+  ActiveAdmin.register Post, as: "ProcInputHtmlPost" do
+    filter :status, as: :select, collection: %w[draft published],
+                    input_html: proc { { class: "select2" } }, default: "published"
+  end
+
   ActiveAdmin.register Post, as: "AllHiddenPost" do
     filter :title, if: -> { false }
   end

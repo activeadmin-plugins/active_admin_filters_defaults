@@ -142,9 +142,21 @@ module ActiveAdminFiltersDefaults
 
     def build_filter_input(attribute, options)
       builder = filter_input_builder
+      options = filter_input_options(options, builder)
       as = options[:as] || builder.send(:default_input_type, attribute)
       builder.send(:namespaced_input_class, as)
-             .new(builder, builder.template, builder.object, :q, attribute, options.except(:default, :if, :unless))
+             .new(builder, builder.template, builder.object, :q, attribute, options)
+    end
+
+    # `:input_html` may be a Proc, which the filters form resolves against the view before it
+    # builds the input. Handing the Proc over instead is not merely incomplete, it is wrong in
+    # a way nothing reports: `Proc#[]` is `call`, so Formtastic asking `input_html[:multiple]`
+    # invokes it, gets a truthy Hash back, and a `:select` derives `_in` rather than `_eq`.
+    def filter_input_options(options, builder)
+      options = options.except(:default, :if, :unless)
+      return options unless options[:input_html].is_a?(Proc)
+
+      options.merge(input_html: builder.template.instance_exec(&options[:input_html]))
     end
 
     # One per request rather than one per filter: #view_context builds a fresh view class every
