@@ -124,6 +124,29 @@ end
 The message is flashed only when the defaults actually took effect. Pass `flash_key:` to use
 something other than `:notice`.
 
+## A URL that means the page
+
+By default the filters stay out of the request: a bare `/admin/cdrs` in one admin's address
+bar shows *their* defaults resolved against *their* clock, and shared with a colleague it
+resolves all over again. When a page is routinely shared by URL, opt into the other trade:
+
+```ruby
+# config/initializers/active_admin.rb
+require "active_admin_filters_defaults/redirect"
+
+ActiveAdmin.register Cdr do
+  redirect_to_default_filters
+  filter :created_at, as: :date_range, default: -> { 1.week.ago.. }
+end
+```
+
+A bare visit now redirects once to the same index with the effective filters spelled out in
+the query string — a relative default frozen to the dates it came to, a per-admin default to
+the values this admin saw. The copied URL is the page. The price: +1 redirect on a bare
+visit, and a bookmarked URL keeps the defaults of the day it was made instead of following
+the code. Non-HTML requests (CSV, JSON) are never redirected; the defaults filter them all
+the same.
+
 ## How it works
 
 Four `prepend`s, no source patching:

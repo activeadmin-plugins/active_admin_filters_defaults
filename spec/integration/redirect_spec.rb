@@ -1,0 +1,79 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+require "rack/utils"
+
+# `redirect_to_default_filters` trades the gem's usual "defaults never touch the request" for
+# a URL that says everything the page shows: the bare index redirects once to itself with the
+# effective filters spelled out in the query string. What the admin copies out of the address
+# bar is then the page they were looking at - same window, same values - instead of a bare
+# path that every recipient resolves against their own clock and their own preferences.
+RSpec.describe "Redirect to default filters", type: :feature do
+  before do
+    Post.create!(title: "keep me", body: "keep body", status: "published",
+                 position: 20, published_date: Date.new(2026, 6, 1), starred: true)
+    Post.create!(title: "drop me", body: "drop body", status: "draft",
+                 position: 1, published_date: Date.new(2020, 1, 1), starred: false)
+  end
+
+  def query_of(url)
+    Rack::Utils.parse_nested_query(URI.parse(url).query.to_s)
+  end
+
+  describe "a bare visit" do
+    it "lands on a URL that carries the defaults, values frozen" do
+      visit "/admin/redirect_posts"
+
+      expect(query_of(page.current_url)["q"])
+        .to eq("status_eq" => "published", "published_date_gteq" => "2026-01-01")
+      expect(page).to have_content("keep me")
+      expect(page).to have_no_content("drop me")
+    end
+
+    it "keeps the rest of the query string" do
+      visit "/admin/redirect_posts?order=title_asc"
+
+      expect(query_of(page.current_url)).to include("order" => "title_asc")
+      expect(query_of(page.current_url)["q"]).to include("status_eq" => "published")
+    end
+  end
+
+  describe "a request that already says what it wants" do
+    it "is left alone when it carries its own filters" do
+      visit "/admin/redirect_posts?q%5Bstatus_eq%5D=draft"
+
+      expect(query_of(page.current_url)["q"]).to eq("status_eq" => "draft")
+      expect(page).to have_content("drop me")
+      expect(page).to have_no_content("keep me")
+    end
+
+    it "is left alone after a blank filters-form submission" do
+      # Submitting the form with every field blank sends `commit` and no `q` - the admin asked
+      # for everything, and a redirect back to the defaults would make that impossible to ask.
+      visit "/admin/redirect_posts?commit=Filter"
+
+      expect(query_of(page.current_url)).to eq("commit" => "Filter")
+      expect(page).to have_content("keep me")
+      expect(page).to have_content("drop me")
+    end
+  end
+
+  # The URL is only rewritten where an address bar is watching. The defaults still filter a
+  # CSV export - that is the gem's core, not the redirect's - so skipping the redirect loses
+  # nothing but the detour.
+  it "exports CSV in one request, defaults still applied" do
+    visit "/admin/redirect_posts.csv"
+
+    expect(URI.parse(page.current_url).query).to be_nil
+    expect(page.body).to include("keep me")
+    expect(page.body).not_to include("drop me")
+  end
+
+  it "does not redirect a resource that went on to declare no defaults" do
+    visit "/admin/redirect_no_defaults_posts"
+
+    expect(URI.parse(page.current_url).query).to be_nil
+    expect(page).to have_content("keep me")
+    expect(page).to have_content("drop me")
+  end
+end

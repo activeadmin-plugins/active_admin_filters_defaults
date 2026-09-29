@@ -36,6 +36,10 @@ file "config/initializers/filters_defaults_notice.rb", <<~RUBY
   require "active_admin_filters_defaults/notice"
 RUBY
 
+file "config/initializers/filters_defaults_redirect.rb", <<~RUBY
+  require "active_admin_filters_defaults/redirect"
+RUBY
+
 generate :"active_admin:install --skip-users"
 generate :"formtastic:install"
 
@@ -124,6 +128,23 @@ file "app/admin/posts.rb", <<~RUBY
 
   ActiveAdmin.register Post, as: "AllHiddenPost" do
     filter :title, if: -> { false }
+  end
+
+  ActiveAdmin.register Post, as: "RedirectPost" do
+    redirect_to_default_filters
+
+    filter :status, as: :select, collection: %w[draft published], default: "published"
+    filter :published_date, as: :date_range, default: -> { Date.new(2026, 1, 1).. }
+
+    csv do
+      column :title
+    end
+  end
+
+  ActiveAdmin.register Post, as: "RedirectNoDefaultsPost" do
+    redirect_to_default_filters
+
+    filter :title
   end
 RUBY
 
