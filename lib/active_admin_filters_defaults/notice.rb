@@ -20,6 +20,11 @@ module ActiveAdminFiltersDefaults
   # admin has filtered for themselves.
   module Notice
     def default_filters_notice(message, flash_key: :notice)
+      # Declared on the resource rather than closed over, so that the redirect - which answers
+      # the request the notice belongs on with a 302 - can find it and carry it across.
+      config.default_filters_notice = message
+      config.default_filters_notice_flash_key = flash_key
+
       before_action only: :index do
         # Both halves are needed: that the resource declares defaults, and that this request is
         # one they apply to. Without the second the notice would also greet an admin who had
@@ -31,8 +36,13 @@ module ActiveAdminFiltersDefaults
       end
     end
   end
+
+  module NoticeResource
+    attr_accessor :default_filters_notice, :default_filters_notice_flash_key
+  end
 end
 
 ActiveAdmin.before_load do |_app|
   ActiveAdmin::ResourceDSL.include ActiveAdminFiltersDefaults::Notice
+  ActiveAdmin::Resource.include ActiveAdminFiltersDefaults::NoticeResource
 end

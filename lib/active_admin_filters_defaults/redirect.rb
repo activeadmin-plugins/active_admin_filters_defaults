@@ -77,6 +77,15 @@ module ActiveAdminFiltersDefaults
         # #filtering_params answers with the request's own `q` and equality holds.
         next if effective.blank? || effective == (requested || {})
 
+        # This request is the one a declared notice belongs on, and it is about to answer 302 -
+        # a flash.now would die with it, so the message rides the redirect instead. Guarded by
+        # respond_to?: the notice is its own opt-in require and may not be loaded.
+        if active_admin_config.respond_to?(:default_filters_notice) &&
+           (message = active_admin_config.default_filters_notice)
+          flash[active_admin_config.default_filters_notice_flash_key] =
+            ::MethodOrProcHelper.render_in_context(self, message)
+        end
+
         redirect_to "#{request.path}?#{request.query_parameters.merge('q' => effective).to_query}"
       end
     end

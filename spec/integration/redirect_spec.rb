@@ -96,4 +96,23 @@ RSpec.describe "Redirect to default filters", type: :feature do
       expect(page).to have_no_content("drop me")
     end
   end
+
+  # Without this the redirect would silently eat every notice: the flash is set on the request
+  # the defaults apply to, and that is the one that answers 302 - so it has to travel.
+  describe "a declared default_filters_notice" do
+    it "survives the redirect" do
+      visit "/sharing/notice_shared_posts"
+
+      expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
+      expect(page).to have_content("Showing published posts by default")
+    end
+
+    it "does not greet a URL that already says what it shows" do
+      # The redirected-to URL opened directly - a pasted link. The recipient asked for exactly
+      # what the address says, so there is nothing to explain.
+      visit "/sharing/notice_shared_posts?q%5Bstatus_eq%5D=published"
+
+      expect(page).to have_no_content("Showing published posts by default")
+    end
+  end
 end
