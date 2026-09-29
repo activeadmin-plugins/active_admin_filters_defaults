@@ -97,6 +97,16 @@ RSpec.describe "Redirect to default filters", type: :feature do
     end
   end
 
+  # A batch action flashes and redirects back to the index; the bare index then answers 302
+  # again. Flash survives exactly one request, so without keeping it the extra hop eats every
+  # such message.
+  it "keeps a flash that arrived from another action across the extra hop" do
+    visit "/sharing/shared_posts/poke"
+
+    expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
+    expect(page).to have_content("poked")
+  end
+
   # Without this the redirect would silently eat every notice: the flash is set on the request
   # the defaults apply to, and that is the one that answers 302 - so it has to travel.
   describe "a declared default_filters_notice" do

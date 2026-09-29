@@ -158,6 +158,12 @@ file "app/admin/posts.rb", <<~RUBY
 
   ActiveAdmin.register Post, as: "SharedPost", namespace: :sharing do
     filter :status, as: :select, collection: %w[draft published], default: "published"
+
+    # Stands in for any action that flashes and sends the admin back to the index - a batch
+    # action, a callback - whose flash must survive the index's own redirect.
+    collection_action :poke do
+      redirect_to collection_path, notice: "poked"
+    end
   end
 
   ActiveAdmin.register Post, as: "QuietPost", namespace: :sharing do
