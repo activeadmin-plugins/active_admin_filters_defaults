@@ -76,4 +76,24 @@ RSpec.describe "Redirect to default filters", type: :feature do
     expect(page).to have_content("keep me")
     expect(page).to have_content("drop me")
   end
+
+  # The setting inherits the Active Admin way - application, then namespace, then resource -
+  # so a namespace whose pages are routinely shared switches once instead of per resource.
+  describe "switched on for a whole namespace" do
+    it "redirects a resource that never mentions it" do
+      visit "/sharing/shared_posts"
+
+      expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
+      expect(page).to have_content("keep me")
+      expect(page).to have_no_content("drop me")
+    end
+
+    it "lets a resource opt back out, defaults still filtering" do
+      visit "/sharing/quiet_posts"
+
+      expect(URI.parse(page.current_url).query).to be_nil
+      expect(page).to have_content("keep me")
+      expect(page).to have_no_content("drop me")
+    end
+  end
 end

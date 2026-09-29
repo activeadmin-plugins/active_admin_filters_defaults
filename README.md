@@ -140,6 +140,23 @@ ActiveAdmin.register Cdr do
 end
 ```
 
+The switch inherits the way Active Admin settings do — application, then namespace, then
+resource — because "our pages get shared around" is usually true of a whole admin, not of
+one index:
+
+```ruby
+ActiveAdmin.setup do |config|
+  config.redirect_to_default_filters = true            # everywhere
+  config.namespace :support do |support|
+    support.redirect_to_default_filters = true         # one namespace
+  end
+end
+
+ActiveAdmin.register Cdr do
+  config.redirect_to_default_filters = false           # opt one resource back out
+end
+```
+
 A bare visit now redirects once to the same index with the effective filters spelled out in
 the query string — a relative default frozen to the dates it came to, a per-admin default to
 the values this admin saw. The copied URL is the page. The price: +1 redirect on a bare

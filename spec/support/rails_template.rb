@@ -38,6 +38,15 @@ RUBY
 
 file "config/initializers/filters_defaults_redirect.rb", <<~RUBY
   require "active_admin_filters_defaults/redirect"
+
+  # The :sharing namespace turns the redirect on wholesale; its resources are registered without
+  # a word about it. The :admin namespace stays on the application default (off), so the
+  # per-resource DSL is what the RedirectPost specs exercise.
+  ActiveAdmin.setup do |config|
+    config.namespace :sharing do |sharing|
+      sharing.redirect_to_default_filters = true
+    end
+  end
 RUBY
 
 generate :"active_admin:install --skip-users"
@@ -145,6 +154,16 @@ file "app/admin/posts.rb", <<~RUBY
     redirect_to_default_filters
 
     filter :title
+  end
+
+  ActiveAdmin.register Post, as: "SharedPost", namespace: :sharing do
+    filter :status, as: :select, collection: %w[draft published], default: "published"
+  end
+
+  ActiveAdmin.register Post, as: "QuietPost", namespace: :sharing do
+    config.redirect_to_default_filters = false
+
+    filter :status, as: :select, collection: %w[draft published], default: "published"
   end
 RUBY
 
