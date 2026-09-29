@@ -171,6 +171,18 @@ file "app/admin/posts.rb", <<~RUBY
 
     filter :status, as: :select, collection: %w[draft published], default: "published"
   end
+
+  ActiveAdmin.register Post, as: "NoticeSharedPost", namespace: :sharing do
+    # Its own flash key, the way an app keeps the filters notice from colliding with the
+    # :notice a batch action or callback writes - both have to survive the redirect together.
+    default_filters_notice "Showing published posts by default", flash_key: :filters_notice
+
+    filter :status, as: :select, collection: %w[draft published], default: "published"
+
+    collection_action :poke do
+      redirect_to collection_path, notice: "poked"
+    end
+  end
 RUBY
 
 run "rm -rf test"
