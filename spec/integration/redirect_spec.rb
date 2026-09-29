@@ -117,6 +117,17 @@ RSpec.describe "Redirect to default filters", type: :feature do
       expect(page).to have_content("Showing published posts by default")
     end
 
+    it "does not eat a flash that arrived from another action" do
+      # Writing the notice loads the flash, and a loaded flash sweeps what came in with the
+      # request when it commits - here, on a 302 that renders nothing. The redirect keeps the
+      # arriving entries, so a batch action's message and the notice land together.
+      visit "/sharing/notice_shared_posts/poke"
+
+      expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
+      expect(page).to have_content("poked")
+      expect(page).to have_content("Showing published posts by default")
+    end
+
     it "does not greet a URL that already says what it shows" do
       # The redirected-to URL opened directly - a pasted link. The recipient asked for exactly
       # what the address says, so there is nothing to explain.

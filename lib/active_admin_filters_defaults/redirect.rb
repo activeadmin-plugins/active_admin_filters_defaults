@@ -82,6 +82,11 @@ module ActiveAdminFiltersDefaults
         # respond_to?: the notice is its own opt-in require and may not be loaded.
         if active_admin_config.respond_to?(:default_filters_notice) &&
            (message = active_admin_config.default_filters_notice)
+          # An untouched flash rides the hop on its own - Rails only sweeps what a request has
+          # loaded - but writing the notice loads it, and everything that arrived with the
+          # request (a batch action's "n records done") would be swept with the 302. Keep it:
+          # those messages are addressed to the page this redirect is on the way to.
+          flash.keep
           flash[active_admin_config.default_filters_notice_flash_key] =
             ::MethodOrProcHelper.render_in_context(self, message)
         end
