@@ -54,6 +54,12 @@ module ActiveAdminFiltersDefaults
 
   module RedirectMode
     def self.included(base)
+      # ActiveAdmin.before_load fires on every dev-mode reload against the same non-reloaded
+      # controller class, and Ruby runs this hook on every include call - without the guard the
+      # callback would be registered again on each reload.
+      return if base.instance_variable_defined?(:@active_admin_filters_defaults_redirect)
+
+      base.instance_variable_set(:@active_admin_filters_defaults_redirect, true)
       base.before_action only: :index do
         mode = active_admin_config.filter_defaults_mode
         unless MODES.include?(mode)
