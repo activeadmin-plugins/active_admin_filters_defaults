@@ -124,45 +124,43 @@ end
 The message is flashed only when the defaults actually took effect. Pass `flash_key:` to use
 something other than `:notice`.
 
-## A URL that means the page
+## Modes: where the defaults meet the request
 
-By default the filters stay out of the request: a bare `/admin/cdrs` in one admin's address
-bar shows *their* defaults resolved against *their* clock, and shared with a colleague it
-resolves all over again. When a page is routinely shared by URL, opt into the other trade:
+`filter_defaults_mode` decides what a request that triggers the defaults looks like
+afterwards. Two modes:
 
-```ruby
-# config/initializers/active_admin.rb
-require "active_admin_filters_defaults/redirect"
+**`:redirect` (the default) — a URL that means the page.** A bare visit to the index
+redirects once to itself with the effective filters spelled out in the query string. A
+relative default is frozen to the dates it came to, a per-admin default to the values this
+admin saw — so the address the admin copies shows the same page to whoever opens it, instead
+of re-resolving the defaults against the recipient's clock and account. A declared
+`default_filters_notice` rides the redirect. The price: +1 redirect on every bare visit, and
+a bookmarked URL pins the defaults of the day it was made rather than following the code.
+Non-HTML requests (CSV, JSON) are never redirected; the defaults filter them all the same.
 
-ActiveAdmin.register Cdr do
-  redirect_to_default_filters
-  filter :created_at, as: :date_range, default: -> { 1.week.ago.. }
-end
-```
+**`:implicit` — the request stays exactly what the admin asked.** The defaults live in the
+search and the filter form only; the URL never mentions them. Nothing extra in the address
+bar and no extra hop — but a copied bare URL re-resolves the defaults on arrival, and any
+code that builds links or exports from `params[:q]` must read `filtering_params` instead to
+see them.
 
-The switch inherits the way Active Admin settings do — application, then namespace, then
-resource — because "our pages get shared around" is usually true of a whole admin, not of
-one index:
+The mode inherits the way Active Admin settings do — application, then namespace, then
+resource — because how an admin treats its URLs is usually a property of the whole admin:
 
 ```ruby
 ActiveAdmin.setup do |config|
-  config.redirect_to_default_filters = true            # everywhere
+  config.filter_defaults_mode = :implicit          # the whole application
   config.namespace :support do |support|
-    support.redirect_to_default_filters = true         # one namespace
+    support.filter_defaults_mode = :redirect       # one namespace
   end
 end
 
 ActiveAdmin.register Cdr do
-  config.redirect_to_default_filters = false           # opt one resource back out
+  filter_defaults_mode :implicit                   # one resource
 end
 ```
 
-A bare visit now redirects once to the same index with the effective filters spelled out in
-the query string — a relative default frozen to the dates it came to, a per-admin default to
-the values this admin saw. The copied URL is the page. The price: +1 redirect on a bare
-visit, and a bookmarked URL keeps the defaults of the day it was made instead of following
-the code. Non-HTML requests (CSV, JSON) are never redirected; the defaults filter them all
-the same.
+An unknown mode raises on the first index request that consults it.
 
 ## How it works
 

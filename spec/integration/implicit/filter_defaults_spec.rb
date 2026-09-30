@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "rack/utils"
 
 # The sample app registers Post once per filter input type - see spec/support/rails_template.rb.
 # Every default below selects `keep me` and rejects `drop me`, so one pair of records exercises
@@ -214,5 +215,35 @@ RSpec.describe "Filter default values", type: :feature do
 
     expect(page).to have_content("keep me")
     expect(page).to have_no_content("drop me")
+  end
+
+  # The mode's defining trait, and what tells this suite apart from the redirect one: the
+  # request is never rewritten. The defaults live in the search and the form, not the URL.
+  describe "the implicit mode" do
+    it "leaves the URL exactly as asked" do
+      visit "/admin/posts"
+
+      expect(URI.parse(page.current_url).query).to be_nil
+      expect(page).to have_no_content("drop me")
+    end
+  end
+
+  # The mode inherits application -> namespace -> resource. This application is :implicit;
+  # the :sharing namespace flips to :redirect; QuietPost flips back.
+  describe "inheritance of the mode" do
+    it "lets a namespace run the redirect mode inside an implicit application" do
+      visit "/sharing/shared_posts"
+
+      query = Rack::Utils.parse_nested_query(URI.parse(page.current_url).query.to_s)
+      expect(query["q"]).to eq("status_eq" => "published")
+      expect(page).to have_no_content("drop me")
+    end
+
+    it "lets a resource opt back out of its namespace's mode" do
+      visit "/sharing/quiet_posts"
+
+      expect(URI.parse(page.current_url).query).to be_nil
+      expect(page).to have_no_content("drop me")
+    end
   end
 end

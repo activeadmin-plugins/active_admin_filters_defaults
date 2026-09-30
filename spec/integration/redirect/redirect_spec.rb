@@ -3,12 +3,12 @@
 require "rails_helper"
 require "rack/utils"
 
-# `redirect_to_default_filters` trades the gem's usual "defaults never touch the request" for
-# a URL that says everything the page shows: the bare index redirects once to itself with the
+# The default mode. This application configures NOTHING mode-related, so every redirect below
+# is the gem's out-of-the-box behavior: the bare index redirects once to itself with the
 # effective filters spelled out in the query string. What the admin copies out of the address
 # bar is then the page they were looking at - same window, same values - instead of a bare
 # path that every recipient resolves against their own clock and their own preferences.
-RSpec.describe "Redirect to default filters", type: :feature do
+RSpec.describe "The redirect mode", type: :feature do
   before do
     Post.create!(title: "keep me", body: "keep body", status: "published",
                  position: 20, published_date: Date.new(2026, 6, 1), starred: true)
@@ -22,7 +22,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
 
   describe "a bare visit" do
     it "lands on a URL that carries the defaults, values frozen" do
-      visit "/admin/redirect_posts"
+      visit "/admin/posts"
 
       expect(query_of(page.current_url)["q"])
         .to eq("status_eq" => "published", "published_date_gteq" => "2026-01-01")
@@ -31,7 +31,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
     end
 
     it "keeps the rest of the query string" do
-      visit "/admin/redirect_posts?order=title_asc"
+      visit "/admin/posts?order=title_asc"
 
       expect(query_of(page.current_url)).to include("order" => "title_asc")
       expect(query_of(page.current_url)["q"]).to include("status_eq" => "published")
@@ -40,7 +40,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
 
   describe "a request that already says what it wants" do
     it "is left alone when it carries its own filters" do
-      visit "/admin/redirect_posts?q%5Bstatus_eq%5D=draft"
+      visit "/admin/posts?q%5Bstatus_eq%5D=draft"
 
       expect(query_of(page.current_url)["q"]).to eq("status_eq" => "draft")
       expect(page).to have_content("drop me")
@@ -50,7 +50,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
     it "is left alone after a blank filters-form submission" do
       # Submitting the form with every field blank sends `commit` and no `q` - the admin asked
       # for everything, and a redirect back to the defaults would make that impossible to ask.
-      visit "/admin/redirect_posts?commit=Filter"
+      visit "/admin/posts?commit=Filter"
 
       expect(query_of(page.current_url)).to eq("commit" => "Filter")
       expect(page).to have_content("keep me")
@@ -59,51 +59,39 @@ RSpec.describe "Redirect to default filters", type: :feature do
   end
 
   # The URL is only rewritten where an address bar is watching. The defaults still filter a
-  # CSV export - that is the gem's core, not the redirect's - so skipping the redirect loses
+  # CSV export - that is the gem's core, not the mode's - so skipping the redirect loses
   # nothing but the detour.
   it "exports CSV in one request, defaults still applied" do
-    visit "/admin/redirect_posts.csv"
+    visit "/admin/posts.csv"
 
     expect(URI.parse(page.current_url).query).to be_nil
     expect(page.body).to include("keep me")
     expect(page.body).not_to include("drop me")
   end
 
-  it "does not redirect a resource that went on to declare no defaults" do
-    visit "/admin/redirect_no_defaults_posts"
+  it "does not redirect a resource that declares no defaults" do
+    visit "/admin/no_defaults_posts"
 
     expect(URI.parse(page.current_url).query).to be_nil
     expect(page).to have_content("keep me")
     expect(page).to have_content("drop me")
   end
 
-  # The setting inherits the Active Admin way - application, then namespace, then resource -
-  # so a namespace whose pages are routinely shared switches once instead of per resource.
-  describe "switched on for a whole namespace" do
-    it "redirects a resource that never mentions it" do
-      visit "/sharing/shared_posts"
+  it "lets a resource run the implicit mode instead" do
+    visit "/admin/implicit_posts"
 
-      expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
-      expect(page).to have_content("keep me")
-      expect(page).to have_no_content("drop me")
-    end
-
-    it "lets a resource opt back out, defaults still filtering" do
-      visit "/sharing/quiet_posts"
-
-      expect(URI.parse(page.current_url).query).to be_nil
-      expect(page).to have_content("keep me")
-      expect(page).to have_no_content("drop me")
-    end
+    expect(URI.parse(page.current_url).query).to be_nil
+    expect(page).to have_content("keep me")
+    expect(page).to have_no_content("drop me")
   end
 
   # A batch action flashes and redirects back to the index; the bare index then answers 302
   # again. Flash survives exactly one request, so without keeping it the extra hop eats every
   # such message.
   it "keeps a flash that arrived from another action across the extra hop" do
-    visit "/sharing/shared_posts/poke"
+    visit "/admin/posts/poke"
 
-    expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
+    expect(query_of(page.current_url)["q"]).to include("status_eq" => "published")
     expect(page).to have_content("poked")
   end
 
@@ -111,7 +99,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
   # the defaults apply to, and that is the one that answers 302 - so it has to travel.
   describe "a declared default_filters_notice" do
     it "survives the redirect" do
-      visit "/sharing/notice_shared_posts"
+      visit "/admin/notice_posts"
 
       expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
       expect(page).to have_content("Showing published posts by default")
@@ -121,7 +109,7 @@ RSpec.describe "Redirect to default filters", type: :feature do
       # Writing the notice loads the flash, and a loaded flash sweeps what came in with the
       # request when it commits - here, on a 302 that renders nothing. The redirect keeps the
       # arriving entries, so a batch action's message and the notice land together.
-      visit "/sharing/notice_shared_posts/poke"
+      visit "/admin/notice_posts/poke"
 
       expect(query_of(page.current_url)["q"]).to eq("status_eq" => "published")
       expect(page).to have_content("poked")
@@ -131,9 +119,14 @@ RSpec.describe "Redirect to default filters", type: :feature do
     it "does not greet a URL that already says what it shows" do
       # The redirected-to URL opened directly - a pasted link. The recipient asked for exactly
       # what the address says, so there is nothing to explain.
-      visit "/sharing/notice_shared_posts?q%5Bstatus_eq%5D=published"
+      visit "/admin/notice_posts?q%5Bstatus_eq%5D=published"
 
       expect(page).to have_no_content("Showing published posts by default")
     end
+  end
+
+  it "raises on a mode that does not exist instead of guessing" do
+    expect { visit "/admin/banana_posts" }
+      .to raise_error(ArgumentError, /filter_defaults_mode is :banana/)
   end
 end

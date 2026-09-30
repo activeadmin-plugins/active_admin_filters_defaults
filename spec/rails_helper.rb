@@ -2,6 +2,10 @@
 
 # Boots the generated sample app. Only the integration specs need this - the unit specs run
 # against a stand-in controller and stay in spec_helper.
+#
+# One app per filter_defaults_mode, selected by APP_MODE - the mode is application
+# configuration, so each suite boots its own app and the suites run as separate processes
+# (`rake spec` does this). A single rspec invocation must not mix the two directories.
 
 $LOAD_PATH.unshift(File.expand_path("support", __dir__))
 
@@ -9,12 +13,15 @@ ENV["BUNDLE_GEMFILE"] = File.expand_path("../Gemfile", __dir__)
 require "bundler"
 Bundler.setup
 
+APP_MODE = ENV["APP_MODE"] ||= "redirect"
+raise ArgumentError, "APP_MODE must be redirect or implicit, got #{APP_MODE}" unless %w[redirect implicit].include?(APP_MODE)
+
 ENV["RAILS_ENV"] = "test"
 require "rails"
 ENV["RAILS"] = Rails.version
-ENV["RAILS_ROOT"] = File.expand_path("rails/rails-#{ENV['RAILS']}", __dir__)
+ENV["RAILS_ROOT"] = File.expand_path("rails/rails-#{ENV['RAILS']}-#{APP_MODE}", __dir__)
 
-system "rake setup" unless File.exist?(ENV["RAILS_ROOT"])
+system({ "APP_MODE" => APP_MODE }, "rake setup") unless File.exist?(ENV["RAILS_ROOT"])
 
 require "active_model"
 # Required before Active Admin so that Ransack loads correctly.

@@ -1,65 +1,66 @@
 # frozen_string_literal: true
 
-require "active_admin_filters_defaults"
-
 module ActiveAdminFiltersDefaults
-  # Optional, and a deliberate departure from the gem's usual manner: everywhere else the
-  # defaults stay out of the request, here the request is rewritten to spell them out.
-  # Require it explicitly to switch it on.
+  # How the declared defaults meet the request. Two modes:
   #
-  #   # config/initializers/active_admin.rb
-  #   require "active_admin_filters_defaults/redirect"
+  # :redirect (the default) - a URL that means the page. A bare HTML GET of the index
+  # redirects once to itself with the effective filters spelled out in the query string, so
+  # the address the admin copies carries the same window, the same values, for whoever opens
+  # it: a relative default is frozen to the dates it came to, a per-admin default to the
+  # values this admin saw. The price: +1 redirect on every bare visit, and a bookmarked URL
+  # pins the defaults of the day it was made rather than following the code.
   #
-  # What it buys is a URL that means the page: a bare visit to the index redirects once to
-  # itself with the effective filters in the query string, so the address the admin copies
-  # carries the same window, the same values, for whoever opens it - a relative default is
-  # frozen to the dates it came to, a per-admin default to the values this admin saw. Without
-  # it a shared bare URL re-resolves the defaults against the recipient's clock and account.
+  # :implicit - the request stays exactly what the admin asked. The defaults live in the
+  # search and the filter form only; the URL never mentions them. Nothing extra in the
+  # address bar and no extra hop - but a copied bare URL re-resolves the defaults against
+  # the recipient's clock and account, and anything built from `params[:q]` (drill-down
+  # links, exports, saved searches) must read #filtering_params instead to see them.
   #
-  # The price is the mirror image: +1 redirect on every bare visit, and a bookmarked URL pins
-  # the defaults of the day it was made rather than following the code.
-  #
-  # The switch inherits the way Active Admin settings do - application, then namespace, then
-  # resource - because "our pages get shared around" is usually true of a whole admin, not of
-  # one index:
+  # The mode inherits the way Active Admin settings do - application, then namespace, then
+  # resource - because how an admin treats its URLs is usually a property of the whole admin:
   #
   #   ActiveAdmin.setup do |config|
-  #     config.redirect_to_default_filters = true            # everywhere
+  #     config.filter_defaults_mode = :implicit          # the whole application
   #     config.namespace :support do |support|
-  #       support.redirect_to_default_filters = true         # one namespace
+  #       support.filter_defaults_mode = :redirect       # one namespace
   #     end
   #   end
   #
   #   ActiveAdmin.register Cdr do
-  #     redirect_to_default_filters                          # one resource
-  #     # or, amid a namespace that switched it on:
-  #     config.redirect_to_default_filters = false
+  #     filter_defaults_mode :implicit                   # one resource
   #   end
-  module Redirect
-    def redirect_to_default_filters
-      config.redirect_to_default_filters = true
+  MODES = %i[redirect implicit].freeze
+
+  module ModeDSL
+    def filter_defaults_mode(value)
+      config.filter_defaults_mode = value
     end
   end
 
   # The breadcrumb pattern: a resource answers for itself when it has been told, and asks its
   # namespace otherwise - which in turn falls back to the application through the settings
   # chain the register call below joins.
-  module RedirectResource
-    attr_writer :redirect_to_default_filters
+  module ModeResource
+    attr_writer :filter_defaults_mode
 
-    def redirect_to_default_filters
-      if instance_variable_defined?(:@redirect_to_default_filters)
-        @redirect_to_default_filters
+    def filter_defaults_mode
+      if instance_variable_defined?(:@filter_defaults_mode)
+        @filter_defaults_mode
       else
-        namespace.redirect_to_default_filters
+        namespace.filter_defaults_mode
       end
     end
   end
 
-  module RedirectController
+  module RedirectMode
     def self.included(base)
       base.before_action only: :index do
-        next unless active_admin_config.redirect_to_default_filters
+        mode = active_admin_config.filter_defaults_mode
+        unless MODES.include?(mode)
+          raise ArgumentError,
+                "filter_defaults_mode is #{mode.inspect}, must be one of #{MODES.map(&:inspect).join(', ')}"
+        end
+        next unless mode == :redirect
 
         # Only where an address bar is watching. The defaults themselves do not depend on the
         # redirect - #filtering_params applies them to a CSV or JSON index all the same - so a
@@ -95,14 +96,4 @@ module ActiveAdminFiltersDefaults
       end
     end
   end
-end
-
-# Registered at require time, before the initializer block below it gets to name the setting
-# on a namespace. Off by default: the redirect is the opt-in side of a trade.
-ActiveAdmin::NamespaceSettings.register :redirect_to_default_filters, false
-
-ActiveAdmin.before_load do |_app|
-  ActiveAdmin::ResourceDSL.include ActiveAdminFiltersDefaults::Redirect
-  ActiveAdmin::Resource.include ActiveAdminFiltersDefaults::RedirectResource
-  ActiveAdmin::ResourceController.include ActiveAdminFiltersDefaults::RedirectController
 end
