@@ -31,10 +31,26 @@ RSpec.describe "The redirect mode", type: :feature do
     end
 
     it "keeps the rest of the query string" do
-      visit "/admin/posts?order=title_asc"
+      visit "/admin/posts?order=title_asc&page=1"
 
-      expect(query_of(page.current_url)).to include("order" => "title_asc")
+      expect(query_of(page.current_url)).to include("order" => "title_asc", "page" => "1")
       expect(query_of(page.current_url)["q"]).to include("status_eq" => "published")
+    end
+  end
+
+  describe "a widened filter_defaults_apply?" do
+    it "adds the defaults beside the pinned key in one hop" do
+      visit "/admin/widened_posts?q%5Btitle_cont%5D=keep"
+
+      expect(query_of(page.current_url)["q"])
+        .to eq("title_cont" => "keep", "status_eq" => "published")
+      expect(page).to have_content("keep me")
+      expect(page).to have_no_content("drop me")
+
+      # The redirected-to URL itself passes through - the guard has converged.
+      converged = page.current_url
+      visit converged
+      expect(page.current_url).to eq(converged)
     end
   end
 

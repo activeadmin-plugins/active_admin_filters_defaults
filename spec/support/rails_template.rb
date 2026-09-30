@@ -195,6 +195,18 @@ else
       filter :position, as: :numeric, default: { in: -> { [] } }
     end
 
+    ActiveAdmin.register Post, as: "WidenedPost" do
+      filter :status, as: :select, collection: %w[draft published], default: "published"
+
+      # The README's widening example: defaults still apply to a request that carries only its
+      # pinned key. The redirect must add the default beside it - in ONE hop.
+      controller do
+        def filter_defaults_apply?
+          super || params[:q].keys == %w[title_cont]
+        end
+      end
+    end
+
     ActiveAdmin.register Post, as: "NoDefaultsPost" do
       filter :title
     end
@@ -204,12 +216,6 @@ else
       filter_defaults_mode :implicit
 
       filter :status, as: :select, collection: %w[draft published], default: "published"
-    end
-
-    ActiveAdmin.register Post, as: "BananaPost" do
-      filter_defaults_mode :banana
-
-      filter :title
     end
 
     # Its mode does not exist; the suite proves that raises instead of guessing.

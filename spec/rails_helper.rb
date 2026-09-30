@@ -16,12 +16,25 @@ Bundler.setup
 APP_MODE = ENV["APP_MODE"] ||= "redirect"
 raise ArgumentError, "APP_MODE must be redirect or implicit, got #{APP_MODE}" unless %w[redirect implicit].include?(APP_MODE)
 
+# A single process boots a single app, so specs of the other mode in the same run would fail
+# opaquely - or worse, pass against the wrong app. Refuse loudly instead.
+other_mode = APP_MODE == "redirect" ? "implicit" : "redirect"
+if RSpec.configuration.files_to_run.any? { |file| file.include?("spec/integration/#{other_mode}/") }
+  abort "This run is APP_MODE=#{APP_MODE} but selects specs from spec/integration/#{other_mode}/ - " \
+        "the two suites boot different sample apps and must run as separate processes: use `rake spec`."
+end
+
 ENV["RAILS_ENV"] = "test"
 require "rails"
 ENV["RAILS"] = Rails.version
 ENV["RAILS_ROOT"] = File.expand_path("rails/rails-#{ENV['RAILS']}-#{APP_MODE}", __dir__)
 
-system({ "APP_MODE" => APP_MODE }, "rake setup") unless File.exist?(ENV["RAILS_ROOT"])
+unless File.exist?(ENV["RAILS_ROOT"])
+  # A generation that dies midway leaves a partial app the File.exist? guard would then skip
+  # forever - fail the run instead of limping into it.
+  system({ "APP_MODE" => APP_MODE }, "rake setup") ||
+    abort("rake setup failed - remove #{ENV['RAILS_ROOT']} before retrying")
+end
 
 require "active_model"
 # Required before Active Admin so that Ransack loads correctly.

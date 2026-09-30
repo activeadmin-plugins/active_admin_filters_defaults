@@ -224,6 +224,7 @@ RSpec.describe "Filter default values", type: :feature do
       visit "/admin/posts"
 
       expect(URI.parse(page.current_url).query).to be_nil
+      expect(page).to have_content("keep me")
       expect(page).to have_no_content("drop me")
     end
   end
@@ -236,6 +237,7 @@ RSpec.describe "Filter default values", type: :feature do
 
       query = Rack::Utils.parse_nested_query(URI.parse(page.current_url).query.to_s)
       expect(query["q"]).to eq("status_eq" => "published")
+      expect(page).to have_content("keep me")
       expect(page).to have_no_content("drop me")
     end
 
@@ -243,6 +245,7 @@ RSpec.describe "Filter default values", type: :feature do
       visit "/sharing/quiet_posts"
 
       expect(URI.parse(page.current_url).query).to be_nil
+      expect(page).to have_content("keep me")
       expect(page).to have_no_content("drop me")
     end
   end
