@@ -162,9 +162,30 @@ end
 
 An unknown mode raises on the first index request that consults it.
 
+Three prints in small type:
+
+* **Require order.** The setting exists once the gem is loaded. With the default Gemfile
+  require that is always before your initializers; with `require: false`, require the gem
+  *above* the `ActiveAdmin.setup` block that names the mode, or the writer raises
+  `NoMethodError` at boot.
+* **Code that rewrites `q` in a `before_action`** (sanitizers that delete invalid ranges,
+  say) runs after the redirect has already compared the request against the defaults - such
+  a page quietly behaves like `:implicit` for the values the sanitizer removes. Rewrite `q`
+  before the gem sees it, or give that resource `filter_defaults_mode :implicit`.
+* **The redirect runs after authentication but before Active Admin's index authorization**,
+  so an authenticated admin without read rights on a resource still receives the 302 whose
+  Location spells out that resource's defaults. If your defaults encode something
+  per-role-sensitive, prefer `:implicit` on that resource.
+
 ## How it works
 
-Four `prepend`s, no source patching:
+Four `prepend`s and a few `include`s, no source patching:
+
+* The mode is a `NamespaceSettings` registration (default `:redirect`), read on the resource
+  through the breadcrumb pattern - answer for yourself when told, ask the namespace
+  otherwise. The redirect itself is one `before_action` on `ResourceController`: compare
+  what `filtering_params` would search with against what the request said, and if the URL is
+  missing something, say it once with a 302.
 
 * `ActiveAdmin::ResourceController` — `apply_filtering` searches on `filtering_params`, a new
   overridable method, instead of reading `params[:q]` directly. `params` itself is never written
