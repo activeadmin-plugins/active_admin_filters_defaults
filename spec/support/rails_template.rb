@@ -127,6 +127,18 @@ if APP_MODE == "implicit"
       filter :title
     end
 
+    ActiveAdmin.register Post, as: "CollidingNoticePost" do
+      # The notice on its DEFAULT flash key - the same :notice a batch action writes. Both have
+      # to coexist on the redirect: the arriving message wins, it names what just happened.
+      default_filters_notice "Showing published posts by default"
+
+      filter :status, as: :select, collection: %w[draft published], default: "published"
+
+      collection_action :poke do
+        redirect_to collection_path, notice: "poked"
+      end
+    end
+
     ActiveAdmin.register Post, as: "NoticePost" do
       default_filters_notice "Showing the kept ones by default"
       filter :title, default: "keep"

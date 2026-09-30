@@ -134,6 +134,20 @@ RSpec.describe "The redirect mode", type: :feature do
       expect(page).to have_content("Showing published posts by default")
     end
 
+    it "yields its shared flash key to a message that arrived from another action" do
+      # On the default :notice key the notice and a batch action's message collide; the
+      # arriving one names what just happened, so it is the one the admin must see.
+      visit "/admin/colliding_notice_posts/poke"
+
+      expect(page).to have_content("poked")
+    end
+
+    it "still greets a bare visit on its default flash key" do
+      visit "/admin/colliding_notice_posts"
+
+      expect(page).to have_content("Showing published posts by default")
+    end
+
     it "does not greet a URL that already says what it shows" do
       # The redirected-to URL opened directly - a pasted link. The recipient asked for exactly
       # what the address says, so there is nothing to explain.

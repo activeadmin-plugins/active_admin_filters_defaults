@@ -102,8 +102,10 @@ module ActiveAdminFiltersDefaults
           # request (a batch action's "n records done") would be swept with the 302. Keep it:
           # those messages are addressed to the page this redirect is on the way to.
           flash.keep
-          flash[active_admin_config.default_filters_notice_flash_key] =
-            ::MethodOrProcHelper.render_in_context(self, message)
+          # On a shared key - the default is :notice, the same key a batch action writes - the
+          # arriving message wins: it names what just happened, the notice can wait.
+          key = active_admin_config.default_filters_notice_flash_key
+          flash[key] = ::MethodOrProcHelper.render_in_context(self, message) if flash[key].blank?
         end
 
         redirect_to "#{request.path}?#{request.query_parameters.merge('q' => effective).to_query}"
