@@ -71,6 +71,9 @@ module ActiveAdminFiltersDefaults
         effective = effective.to_unsafe_h if effective.respond_to?(:to_unsafe_h)
         requested = params[:q]
         requested = requested.to_unsafe_h if requested.respond_to?(:to_unsafe_h)
+        # `?q=` parses to an empty String; treat it the way #filtering_params does - as absent -
+        # so the equality below compares Hashes on both sides.
+        requested = nil unless requested.is_a?(Hash)
 
         # One redirect, not a loop, whatever #filter_defaults_apply? has been widened to: once
         # the query string carries everything the defaults would add, the two sides are equal

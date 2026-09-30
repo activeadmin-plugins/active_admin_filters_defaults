@@ -38,6 +38,13 @@ RSpec.describe "The redirect mode", type: :feature do
     end
   end
 
+  it "treats `?q=` - an empty string - as a bare visit" do
+    visit "/admin/posts?q="
+
+    expect(query_of(page.current_url)["q"]).to include("status_eq" => "published")
+    expect(page).to have_no_content("drop me")
+  end
+
   describe "a request that already says what it wants" do
     it "is left alone when it carries its own filters" do
       visit "/admin/posts?q%5Bstatus_eq%5D=draft"

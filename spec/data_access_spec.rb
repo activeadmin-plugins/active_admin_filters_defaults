@@ -38,6 +38,20 @@ RSpec.describe ActiveAdminFiltersDefaults::DataAccess do
     end
   end
 
+  describe "a q that is not a Hash" do
+    let(:filters) { { starred_eq: { default: true } } }
+
+    # Rack parses `?q=` to an empty String. It is blank, so the defaults apply - and merging
+    # them with a String must not be attempted.
+    context "when the request carries `?q=`" do
+      let(:params) { { q: "" } }
+
+      it "treats it as absent and applies the defaults" do
+        expect(searched_with).to eq("starred_eq" => true)
+      end
+    end
+  end
+
   describe "a Hash default" do
     let(:filters) { { created_at: { as: :date_range, default: { gteq: "2020-01-01" } } } }
 

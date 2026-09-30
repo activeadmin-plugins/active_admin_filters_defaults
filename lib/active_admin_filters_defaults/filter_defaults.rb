@@ -32,6 +32,9 @@ module ActiveAdminFiltersDefaults
 
       requested = params[:q]
       requested = requested.to_unsafe_h if requested.respond_to?(:to_unsafe_h)
+      # `?q=` parses to an empty String - blank, so the defaults apply, but not a Hash, so it
+      # must not reach the merge. Anything else non-Hash is junk Ransack would ignore anyway.
+      requested = nil unless requested.is_a?(Hash)
       defaults.merge(requested || {})
     end
 
