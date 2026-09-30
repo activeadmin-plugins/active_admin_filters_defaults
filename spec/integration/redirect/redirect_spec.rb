@@ -76,6 +76,17 @@ RSpec.describe "The redirect mode", type: :feature do
     expect(page.body).not_to include("drop me")
   end
 
+  it "does not chase a default the URL cannot carry" do
+    # to_query drops an empty Array entirely, so redirecting on it would loop: the redirected
+    # URL parses back without the key and the next request is bare again. Such a value stays
+    # on the implicit path instead.
+    visit "/admin/empty_default_posts"
+
+    expect(URI.parse(page.current_url).query).to be_nil
+    expect(page).to have_content("keep me")
+    expect(page).to have_content("drop me")
+  end
+
   it "does not redirect a resource that declares no defaults" do
     visit "/admin/no_defaults_posts"
 

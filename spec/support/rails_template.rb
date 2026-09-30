@@ -177,6 +177,12 @@ else
       end
     end
 
+    ActiveAdmin.register Post, as: "EmptyDefaultPost" do
+      # A default that resolves to an empty Array - `-> { current_admin_user.visible_ids }` on an
+      # admin with none - is a value to_query cannot carry into a URL.
+      filter :position, as: :numeric, default: { in: -> { [] } }
+    end
+
     ActiveAdmin.register Post, as: "NoDefaultsPost" do
       filter :title
     end

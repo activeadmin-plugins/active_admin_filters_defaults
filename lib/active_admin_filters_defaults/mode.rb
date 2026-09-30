@@ -75,6 +75,11 @@ module ActiveAdminFiltersDefaults
         # so the equality below compares Hashes on both sides.
         requested = nil unless requested.is_a?(Hash)
 
+        # An empty Array is a value to_query drops from the URL entirely - redirecting on it
+        # would loop, since the redirected URL parses back without the key and the next request
+        # is bare again. A value the URL cannot say stays on the implicit path.
+        effective = effective.reject { |_, value| value.is_a?(Array) && value.empty? }
+
         # One redirect, not a loop, whatever #filter_defaults_apply? has been widened to: once
         # the query string carries everything the defaults would add, the two sides are equal
         # and the request passes through. This also covers "defaults do not apply here" -
