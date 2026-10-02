@@ -15,9 +15,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Rails 7.1 is out of even severe-security support, so the floor is 7.2.
-        ruby: ['3.2', '3.4']
-        rails: ['7.2.0', '8.0.0']
+        # Rails 7.2 reached end of life on 2026-08-09, so the floor is 8.0. Ruby 3.2 went EOL
+        # on 2026-03-31, so the floor there is 3.3 (security-only until 2027-03-31).
+        ruby: ['3.3', '3.4', '4.0']
+        rails: ['8.0.0', '8.1.0']
         activeadmin: ['3.5.0']
     env:
       RAILS: ${{ matrix.rails }}

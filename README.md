@@ -143,7 +143,7 @@ Four `prepend`s, no source patching:
 `default:` needs no registration of its own: `add_filter` stores whatever options it is given,
 without a whitelist.
 
-Tested against Active Admin 3.5 on Rails 7.2 and 8.0.
+Tested against Active Admin 3.5 on Rails 8.0 and 8.1, under Ruby 3.3, 3.4 and 4.0.
 
 ## License
 

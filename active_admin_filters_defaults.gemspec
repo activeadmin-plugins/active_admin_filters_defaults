@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = "Lets an Active Admin resource declare what its index filters on when opened " \
                   "without filters of its own: filter :state_eq, default: 'active'"
 
-  s.required_ruby_version = ">= 3.0"
+  s.required_ruby_version = ">= 3.3"
   s.add_dependency "activeadmin", ">= 3.5", "< 4"
 
   s.files         = `git ls-files`.split("\n")
